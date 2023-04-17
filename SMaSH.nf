@@ -47,7 +47,7 @@ process process_bam_smash {
     frac=\$(echo "scale=3;${params.n_reads_smash} / \$filesize" | bc)
     /yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools view $bam --with-header --subsample \$frac -b > ${sample}_smash.bam
     /yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools sort $bam -o ${sample}_sorted.bam
-    #/yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools index -o ${sample}_sorted.bam.bai
+    /yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools index -o ${sample}_sorted.bam.bai
     """
 }
 
@@ -71,11 +71,12 @@ process smash {
 workflow {
     println "Workflow start: $workflow.start"
     Channel
-        .fromPath("${params.bam_dir}/**.bam", size:-1)
+        .fromPath("${params.bam_dir}/*/*.bam")
         .set { files }
         
-    process_sam_smash(files)
-    smash(process_sam_smash.out.collect()) | view()
+    //process_bam_smash(files)
+    //smash(process_bam_smash.out.collect()) | view()
+    smash(files.collect()) | view()
 }
 
 workflow.onComplete {
