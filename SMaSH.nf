@@ -40,26 +40,50 @@ process process_bam_smash {
     input:
         path bam
     output:
-        path "${sample}_smash.bam", emit: bam
+        path("*smash.bam"), emit: bam
+        path("*smash.bam.bai"), emit: bai
     script:
-    """
-    filesize=\$(/yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools view $bam --no-header -c)
-    frac=\$(echo "scale=3;${params.n_reads_smash} / \$filesize" | bc)
-    /yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools view $bam --with-header --subsample \$frac -b > ${sample}_smash.bam
-    /yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools sort $bam -o ${sample}_sorted.bam
-    /yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools index -o ${sample}_sorted.bam.bai
-    """
+    // """
+    // bam_basename=`basename ${bam}`
+    // echo "process bam, output \${bam_basename}_sorted.bam.bai"
+    // """
+
+   """
+   bam_basename=`basename ${bam}`
+   filesize=\$(/yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools view $bam --no-header -c)
+   frac=\$(echo "scale=3;${params.n_reads_smash} / \$filesize" | bc)
+   /yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools view $bam --with-header --subsample \$frac -b > \${bam_basename}_smash.bam
+   /yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools sort $bam -o \${bam_basename}_smash.bam
+   /yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools index $bam -o \${bam_basename}_smash.bam.bai
+   """
 }
 
 process smash {
     input:
         path bam
-        //path bai
+        path bai
+
     output:
         stdout
+    
     script:
-    """
-    echo "execute smash with samples $bam"
+    """"
+    echo ${bam}
+    echo ${bai}
+
+    # zcat /yerkes-cifs/runs/tools/docker/images/smash.tar.gz | docker load
+
+    # my_pwd=`pwd`
+
+    # docker run \
+    #     --rm \
+    #     -v /yerkes-cifs/runs/tools/SMaSH-master:/yerkes-cifs/runs/tools/SMaSH-master \
+    #     -v ${my_pwd}:/smash/ \
+    #     -w /smash/ \
+    #     ff13285f3b4f \
+    #     /yerkes-cifs/runs/tools/SMaSH-master/SMaSH.py \
+    #             -i /yerkes-cifs/runs/tools/SMaSH-master/snps_GRCh38.vcf \
+    #             -bam 'ALL'
     """
 }
 
@@ -74,9 +98,10 @@ workflow {
         .fromPath("${params.bam_dir}/*/*.bam")
         .set { files }
         
-    //process_bam_smash(files)
-    //smash(process_bam_smash.out.collect()) | view()
-    smash(files.collect()) | view()
+    process_bam_smash(files)
+    smash(process_bam_smash.out.bam.collect(), process_bam_smash.out.bai.collect()) | view()
+    // smash(process_bam_smash.out.collect()) | view()
+    //smash(files.collect()) | view()
 }
 
 workflow.onComplete {
