@@ -47,8 +47,13 @@ process SUBSAMPLE_BAM {
     script:
     """
     filesize=\$(/yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools view $full_bam --no-header -c)
-    frac=\$(echo "scale=3;$params.n_reads_smash / \$filesize" | bc)
-    /yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools view full.bam --with-header --subsample \$frac -b > sub.bam
+    if [[ $\filesize -lt 5000000 ]]
+    then
+        /yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools view full.bam --with-header -b > sub.bam
+    else
+        frac=\$(echo "scale=3;$params.n_reads_smash / \$filesize" | bc)
+        /yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools view full.bam --with-header --subsample \$frac -b > sub.bam
+    fi
     """
 }
 
