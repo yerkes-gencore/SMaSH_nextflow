@@ -1,2 +1,0 @@
-Batch3 s3://yerkes-gencore-fastq-archive/2023_runs/230130_A00945_0306_AHLHKYDSX5/Unaligned_Lane1-3/p22277_CVIA078-Batch3-230130A/*CVIA78-007*.fastq.gz
-Batch9 s3://yerkes-gencore-fastq-archive/2023_runs/230203_A00945_0307_AHLJCHDSX5/Unaligned_Lane1/p22277_CVIA078-Batch9-230203A/*CVIA78-019*.fastq.gz

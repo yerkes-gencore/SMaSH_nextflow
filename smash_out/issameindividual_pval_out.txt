@@ -1,0 +1,6 @@
+# probabilities to be from the same individual
+.	p23025-s204_LB62-D25_sorted_smash.bam	p23025-s159_LB15-D18_sorted_smash.bam	p23025-s218_LV86-D25_sorted_smash.bam	p23025-s180_LB08-Baseline_sorted_smash.bam
+p23025-s204_LB62-D25_sorted_smash.bam	1	1	1	1
+p23025-s159_LB15-D18_sorted_smash.bam	1	1	1	1
+p23025-s218_LV86-D25_sorted_smash.bam	1	1	1	1
+p23025-s180_LB08-Baseline_sorted_smash.bam	1	1	1	1

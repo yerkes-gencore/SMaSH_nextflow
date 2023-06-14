@@ -1,5 +1,6 @@
 #!/usr/bin/env nextflow
 nextflow.enable.dsl=2
+
 def helpMessage() {
     log.info """
     Usage:
@@ -39,20 +40,20 @@ validations()
 process SUBSAMPLE_BAM {
     
     input:
-    tuple val sample_id, path full_bam
+    tuple val(sample_id), path(full_bam)
     
     output:
-    tuple val sample_id, path 'sub.bam'
+    tuple val(sample_id), path('sub.bam')
     
     script:
     """
     filesize=\$(/yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools view $full_bam --no-header -c)
-    if [[ $\filesize -lt 5000000 ]]
+    if [[ \$filesize -lt 5000000 ]]
     then
-        /yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools view full.bam --with-header -b > sub.bam
+        /yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools view $full_bam --with-header -b > sub.bam
     else
         frac=\$(echo "scale=3;$params.n_reads_smash / \$filesize" | bc)
-        /yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools view full.bam --with-header --subsample \$frac -b > sub.bam
+        /yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools view $full_bam --with-header --subsample \$frac -b > sub.bam
     fi
     """
 }
@@ -60,55 +61,54 @@ process SUBSAMPLE_BAM {
 process SORT_BAM {
     publishDir "$params.outdir/subset_bams", mode: 'copy', overwrite: false
     cpus "$params.cpus"
-    maxForks "$params.maxForks"
+    maxForks 24 // can't assign using params?
     
     input:
-    tuple val sample_id, path subsampled_bam
+    tuple val(sample_id), path(subsampled_bam)
     
     output:
-    tuple val sample_id, path 'sorted.bam'
+    tuple val(sample_id), path("${sample_id}_smash.bam")
     
     script:
     """
-    /yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools sort $subsampled_bam -@ 32 -o sorted.bam
+    /yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools sort $subsampled_bam -@ 32 -o ${sample_id}_smash.bam
     """
 }
 
 process INDEX_BAM {
     publishDir "$params.outdir/subset_bams", mode: 'copy', overwrite: false
     cpus "$params.cpus"
-    maxForks "$params.maxForks"
+    maxForks 24
     
     input:
-    tuple val sample_id, path sorted_bam
+    tuple val(sample_id), path("${sample_id}_smash.bam")
     
     output:
-    tuple path "${sample_id}_smash.bam", path "${sample_id}_smash.bai"
+    path("${sample_id}_smash.*", includeInputs: true)
     
     script:
     """
-    /yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools index $sorted_bam -@ 32 -o ${sample_id}_smash.bai
+    /yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools index ${sample_id}_smash.bam -@ 32 -o ${sample_id}_smash.bai
     """
 }
 
-process SMASH_BAM {
+process SMASH {
     container = 'ff13285f3b4f'
     publishDir "$params.outdir/smash_out", mode: 'copy', overwrite: false
     
     input:
-    path sorted_bams
-    path sorted_bais
-    path vcf
+    path(indexed_bams)
+    // path vcf
     
     output:
-    tuple path '*pval_out.txt*', path '*.vcf.*.p'
+    tuple path('*pval_out.txt*'), path('*.vcf.*.p')
     
     script:
     """
     /yerkes-cifs/runs/tools/SMaSH-master/SMaSH.py \
-        -i $vcf \
+        -i $params.vcf_path/$params.vcf_file \
         -bam 'ALL' \
-        -output_dir smash_out/
+        -output_dir .
     """
 
 }
@@ -139,22 +139,25 @@ workflow {
     Channel
         .fromPath("${params.bam_dir}/**.bam")
         .take ( params.dev ? params.dev_n_samples : -1 )
-        .map { file -> tuple(file.baseName, file) }
-        set { input_bams_ch }
+        .map { file -> [file.baseName, file] }
+        .set { input_bams_ch }
     
     // Prepare bams for SMaSH
-    SUBSAMPLE_BAM(input_bams_ch) | SORT_BAM() | INDEX_BAM() // Publishes subsampled + sorted bams used in SMaSH
-        .collect() // And passes bams and bais to SMaSH
-        .set { processed_bams_ch }
+    subsampled_bam_ch = SUBSAMPLE_BAM(input_bams_ch)
     
-    // Instantiate vcf channel for 
-    Channel
-        .fromPath("$params.vcf_path/$params.vcf_file")
-        .set { vcf_ch }
+    sorted_bam_ch = SORT_BAM(subsampled_bam_ch) 
+    
+    processed_bams_ch = INDEX_BAM(sorted_bam_ch) // Publishes subsampled + sorted bams used in SMaSH
+        .collect() // And passes bams and bais to SMaSH
+    
+    // Instantiate vcf channel
+    // Channel
+    //     .fromPath("$params.vcf_path/$params.vcf_file")
+    //     .set { vcf_ch }
 
     // Run SMaSH (and send 'p_val_out.txt' to heatmap process)
-    SMASH(processed_bams_ch, vcf_ch) // Publishes SMaSH output
-        .filter( it[1].name == 'pval_out.txt' ) // And passes 'pval_out.txt' to the heatmap process
+    SMASH(processed_bams_ch) //, vcf_ch) // Publishes SMaSH output
+        .filter { it.name == 'pval_out.txt' } // And passes 'pval_out.txt' to the heatmap process
         .set { smash_p_val_ch }
 
     // Plot p-value heatmap
@@ -173,7 +176,7 @@ workflow.onComplete {
         publishDir  : ${params.outdir}
         """
         .stripIndent()
-    if (params.emails?.trim()){
+    if (params.emails?.trim() && !params.dev){
         sendMail(to: "${params.emails}", subject: 'SMaSH Run Complete', body: msg)
     } 
 }

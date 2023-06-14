@@ -6,3 +6,5 @@ results
 workspace.code-workspace
 .DS_Store
 test/
+*.bam
+*.bai
