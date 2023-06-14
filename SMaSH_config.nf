@@ -28,6 +28,11 @@ params {
     // Run in development mode (run on only a small subset of samples)
     dev = false
     dev_n_samples = 4
+
+    // Pval heatmap params
+    heatmapWidth = 30 // cm
+    heatmapTextSize = 4
+
 }
 
 // Nextflow automatically mounts the task workdir, so it only causes problems if you try to do that here.

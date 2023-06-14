@@ -1,0 +1,54 @@
+#!/usr/bin/env Rscript
+
+# Plot heatmap of the exponents of SMaSH pvalues (because the pvalue floats are too small for R to handle for many datasets)
+
+## Setup
+library(readr)
+library(stringr)
+library(tidyr)
+library(dplyr)
+library(forcats)
+library(ggplot2)
+
+## Read in data
+setwd("/Volumes/yerkes/genomelab/illumina/runs/Analysis/2023_Analyses/p23025_Prabhu/smash/Prabhu_small_nextera")
+pval_out <- read_tsv("smash_out/pval_out.txt", col_types = paste(rep("c",360), collapse=''))
+
+pval_out <- pval_out %>%
+  mutate(across(ends_with(".bam"), function(x) str_extract(x, pattern = "E-[0-9]+")),
+         across(ends_with(".bam"), function(x) as.numeric(str_extract(x, pattern = "[0-9]+"))))
+
+to_plot <- pval_out %>%
+  rename(sample_A = ".") %>%
+  pivot_longer(cols = ends_with(".bam"),
+               names_to = "sample_B",
+               values_to = "pval_neg_exp") %>%
+  mutate(sample_A = str_replace_all(sample_A, "-", "_"),
+         sample_B = str_replace_all(sample_B, "-", "_")) %>%
+  separate_wider_delim(cols = c("sample_A"),
+                       delim = "_",
+                       names = c("projID_A", "sampID_A", "indivID_A", "repID_A"),
+                       too_many = "drop") %>%
+  separate_wider_delim(cols = c("sample_B"),
+                       delim = "_",
+                       names = c("projID_B", "sampID_B", "indivID_B", "repID_B"),
+                       too_many = "drop") %>%
+  mutate(self = indivID_A == indivID_B,
+         proj_sampID_A = paste0(projID_A, sampID_A),
+         proj_sampID_B = paste0(projID_B, sampID_B),
+         indiv_repID_A = paste0(indivID_A, "_", repID_A),
+         indiv_repID_B = paste0(indivID_B, "_", repID_B)) %>%
+  select(proj_sampID_A, proj_sampID_B, everything())
+
+p <- to_plot %>%
+  ggplot(data=., aes(x=fct_reorder(indiv_repID_A, projID_A), 
+                     y=fct_reorder(indiv_repID_B, projID_B), 
+                     fill=pval_neg_exp)) +
+  geom_raster() +
+  scale_fill_viridis_c(option="magma") +
+  theme(axis.text = element_text(size=3),
+        axis.text.x = element_text(angle=90, hjust = 1, vjust=0.5),
+        aspect.ratio = 1) 
+
+ggsave(filename = "smash_out/SMaSH_pval_heatmap.png", plot = p, device = "png", width = 45, height = 45, units = "cm")
+

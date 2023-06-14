@@ -114,7 +114,7 @@ process SMASH {
 }
 
 // process PLOT_HEATMAP {
-//     // container = base R container with dplyr and ggplot2
+//     container = 'rocker/tidyverse'
 //     publishDir "$params.outdir/smash_out", mode: 'move', overwrite: false
 
 //     input:
@@ -124,7 +124,9 @@ process SMASH {
 //     path 'pval_heatmap.png'
 
 //     script:
-//     // R script
+//     """
+//     Rscript plot_SMaSH_heatmap.R ${params.heatmapWidth} ${params.heatmapTextSize}
+//     """
 
 // }
 
@@ -160,7 +162,7 @@ workflow {
         .filter { it.name == 'pval_out.txt' } // And passes 'pval_out.txt' to the heatmap process
         .set { smash_p_val_ch }
 
-    // Plot p-value heatmap
+    // // Plot p-value heatmap
     // PLOT_HEATMAP(smash_p_val_ch) // Publishes a heatmap representation of SMaSH output
 }
 
