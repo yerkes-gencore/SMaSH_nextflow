@@ -2,11 +2,11 @@
 
 Start by cloning this repo into the desired working dir. 
 
-Then modify the SMaSH_config.nf to specify at least three key parameters:
+Then modify `SMaSH_config.nf` to specify at least three key parameters:
  - `bam_dir` - the directory with the bam files output by the STAR run
- - `outdir` - the directory to publish the results in (smash output will actually be published in ${outdir}/smash_out
- - vcf_file - name of vcf file used by SMaSH
- - vcf_path - path to vcf file used by SMaSH
+ - `outdir` - the directory to publish the results in (smash output will actually be published in `${outdir}/smash_out`
+ - `vcf_file` - name of vcf file used by SMaSH
+ - `vcf_path` - path to vcf file used by SMaSH
 
 If you are working on a server other than sblab-03 you may want to adjust `cpus` and `maxForks` in the config too, as they are optimized for that server.
 
