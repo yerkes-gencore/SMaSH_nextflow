@@ -17,3 +17,12 @@ This test run should finish in a few minutes. If that works, run on the whole da
 `/yerkes-cifs/runs/tools/nextflow/nextflow main.nf -c SMaSH_config.nf`
 
 As of 2023.06.14 the PLOT_HEATMAP process is commented out, so if you want a heatmap you will need to run `bin/plot_SMaSH_heatmap.R` on a machine with R and tidyverse installed. See issue https://github.com/yerkes-gencore/SMaSH_nextflow/issues/2#issue-1757315834
+
+## To do:
+
+- [ ] - Re-build a docker image to run SMaSH on: requires pysam, scipy, and numpy
+- [ ] - Push SMaSH image to dockerhub for easy access
+- [ ] - Pull tidyverse docker image for plotting heatmap in R
+- [ ] - Limit fork/cpu specifications to actual capacity of server(s)
+- [ ] - Create profiles for each server (with different fork/cpu specifications)
+- [ ] - Add option to not save subsetted bams to save disk space
