@@ -37,13 +37,16 @@ params {
 // Nextflow automatically mounts the task workdir, so it only causes problems if you try to do that here.
 docker {
     enabled = true
-    runOptions = "-v /yerkes-cifs/runs/tools/SMaSH-master:/yerkes-cifs/runs/tools/SMaSH-master \
-                  -v $params.vcf_path:$params.vcf_path"
+    // runOptions = "-v /yerkes-cifs/runs/tools/SMaSH-master:/yerkes-cifs/runs/tools/SMaSH-master \
+    //               -v $params.vcf_path:$params.vcf_path"
     // runOptions = "-v /yerkes-cifs/runs/tools/SMaSH-master:/yerkes-cifs/runs/tools/SMaSH-master \
     //               -v $PWD/subset_bams:$PWD/subset_bams/ \
     //               -v $params.vcf_path:$params.vcf_path \
     //               -w $PWD/subset_bams/"
 }
+
+// The samtools installation wasn't working on the new servers, so you can conda and the conda/samtools_env.yml recipe to create an environment with a working version of samtools v1.17.
+conda.enabled = true
 
 profiles { 
     dryrun {

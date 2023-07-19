@@ -38,7 +38,7 @@ validations()
 // ////////////////////////////////////////////////////
 
 process SUBSAMPLE_BAM {
-    
+    container = "docker.io/micahpf/samtools:1.17"
     input:
     tuple val(sample_id), path(full_bam)
     
@@ -47,18 +47,19 @@ process SUBSAMPLE_BAM {
     
     script:
     """
-    filesize=\$(/yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools view $full_bam --no-header -c)
+    filesize=\$(samtools view $full_bam --no-header -c)
     if [[ \$filesize -lt 5000000 ]]
     then
-        /yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools view $full_bam --with-header -b > sub.bam
+        samtools view $full_bam --with-header -b > sub.bam
     else
         frac=\$(echo "scale=3;$params.n_reads_smash / \$filesize" | bc)
-        /yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools view $full_bam --with-header --subsample \$frac -b > sub.bam
+        samtools view $full_bam --with-header --subsample \$frac -b > sub.bam
     fi
     """
 }
 
 process SORT_BAM {
+    container = "docker.io/micahpf/samtools:1.17"
     publishDir "$params.outdir/subset_bams", mode: 'copy', overwrite: false
     cpus "$params.cpus"
     maxForks 3 // can't assign using params?
@@ -71,12 +72,12 @@ process SORT_BAM {
     
     script:
     """
-    /yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools sort $subsampled_bam -@ $param.cpus -o ${sample_id}_smash.bam
+    samtools sort $subsampled_bam -@ $param.cpus -o ${sample_id}_smash.bam
     """
 }
 
 process INDEX_BAM {
-    container = 'docker.io/micahpf/smash:v1'
+    container = 'docker.io/micahpf/samtools:1.17'
     publishDir "$params.outdir/subset_bams", mode: 'copy', overwrite: false
     cpus "$params.cpus"
     maxForks 24
@@ -95,6 +96,8 @@ process INDEX_BAM {
 
 process SMASH {
     container = 'docker.io/micahpf/smash:v1'
+    containerOptions '-v /yerkes-cifs/runs/tools/SMaSH-master:/yerkes-cifs/runs/tools/SMaSH-master \
+                  -v $params.vcf_path:$params.vcf_path'
     publishDir "$params.outdir/smash_out", mode: 'copy', overwrite: false
     
     input:
