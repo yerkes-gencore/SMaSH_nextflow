@@ -14,7 +14,6 @@ params {
     
     // Resources (cpus = 32, maxForks = 25 works ok for sblab03)
     cpus = 32
-    maxForks = 25
    
     // Number of reads per sample to use for SMaSH
     n_reads_smash = 5000000

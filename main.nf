@@ -61,7 +61,7 @@ process SUBSAMPLE_BAM {
 process SORT_BAM {
     publishDir "$params.outdir/subset_bams", mode: 'copy', overwrite: false
     cpus "$params.cpus"
-    maxForks 24 // can't assign using params?
+    maxForks 3 // can't assign using params?
     
     input:
     tuple val(sample_id), path(subsampled_bam)
@@ -71,11 +71,12 @@ process SORT_BAM {
     
     script:
     """
-    /yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools sort $subsampled_bam -@ 32 -o ${sample_id}_smash.bam
+    /yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools sort $subsampled_bam -@ $param.cpus -o ${sample_id}_smash.bam
     """
 }
 
 process INDEX_BAM {
+    container = 'docker.io/micahpf/smash:v1'
     publishDir "$params.outdir/subset_bams", mode: 'copy', overwrite: false
     cpus "$params.cpus"
     maxForks 24
@@ -88,12 +89,12 @@ process INDEX_BAM {
     
     script:
     """
-    /yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools index ${sample_id}_smash.bam -@ 32 -o ${sample_id}_smash.bai
+    /yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools index ${sample_id}_smash.bam -@ $param.cpus -o ${sample_id}_smash.bai
     """
 }
 
 process SMASH {
-    container = 'ff13285f3b4f'
+    container = 'docker.io/micahpf/smash:v1'
     publishDir "$params.outdir/smash_out", mode: 'copy', overwrite: false
     
     input:
@@ -110,25 +111,24 @@ process SMASH {
         -bam 'ALL' \
         -output_dir .
     """
-
 }
 
-// process PLOT_HEATMAP {
-//     container = 'rocker/tidyverse'
-//     publishDir "$params.outdir/smash_out", mode: 'move', overwrite: false
+process PLOT_HEATMAP {
+    container = 'docker.io/rocker/tidyverse'
+    publishDir "$params.outdir/smash_out", mode: 'move', overwrite: false
 
-//     input:
-//     path 'pval_out.txt'
+    input:
+    path 'pval_out.txt'
 
-//     output: 
-//     path 'pval_heatmap.png'
+    output: 
+    path 'pval_heatmap.png'
 
-//     script:
-//     """
-//     Rscript plot_SMaSH_heatmap.R ${params.heatmapWidth} ${params.heatmapTextSize}
-//     """
+    script:
+    """
+    Rscript plot_SMaSH_heatmap.R ${params.heatmapWidth} ${params.heatmapTextSize}
+    """
 
-// }
+}
 
 // ////////////////////////////////////////////////////
 // /* --              WORKFLOW                    -- */
@@ -162,8 +162,8 @@ workflow {
         .filter { it.name == 'pval_out.txt' } // And passes 'pval_out.txt' to the heatmap process
         .set { smash_p_val_ch }
 
-    // // Plot p-value heatmap
-    // PLOT_HEATMAP(smash_p_val_ch) // Publishes a heatmap representation of SMaSH output
+    // Plot p-value heatmap
+    PLOT_HEATMAP(smash_p_val_ch) // Publishes a heatmap representation of SMaSH output
 }
 
 workflow.onComplete {
