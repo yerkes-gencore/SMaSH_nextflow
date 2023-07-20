@@ -38,7 +38,8 @@ validations()
 // ////////////////////////////////////////////////////
 
 process SUBSAMPLE_BAM {
-    container = "docker.io/micahpf/samtools:1.17"
+    label 'samtools'
+
     input:
     tuple val(sample_id), path(full_bam)
     
@@ -59,10 +60,8 @@ process SUBSAMPLE_BAM {
 }
 
 process SORT_BAM {
-    container = "docker.io/micahpf/samtools:1.17"
+    label 'samtools'
     publishDir "$params.outdir/subset_bams", mode: 'copy', overwrite: false
-    cpus "$params.cpus"
-    maxForks 3 // can't assign using params?
     
     input:
     tuple val(sample_id), path(subsampled_bam)
@@ -77,10 +76,8 @@ process SORT_BAM {
 }
 
 process INDEX_BAM {
-    container = 'docker.io/micahpf/samtools:1.17'
+    label 'samtools'
     publishDir "$params.outdir/subset_bams", mode: 'copy', overwrite: false
-    cpus "$params.cpus"
-    maxForks 24
     
     input:
     tuple val(sample_id), path("${sample_id}_smash.bam")
@@ -95,9 +92,6 @@ process INDEX_BAM {
 }
 
 process SMASH {
-    container = 'docker.io/micahpf/smash:v1'
-    containerOptions '-v /yerkes-cifs/runs/tools/SMaSH-master:/yerkes-cifs/runs/tools/SMaSH-master \
-                  -v $params.vcf_path:$params.vcf_path'
     publishDir "$params.outdir/smash_out", mode: 'copy', overwrite: false
     
     input:
@@ -117,7 +111,6 @@ process SMASH {
 }
 
 process PLOT_HEATMAP {
-    container = 'docker.io/rocker/tidyverse'
     publishDir "$params.outdir/smash_out", mode: 'move', overwrite: false
 
     input:

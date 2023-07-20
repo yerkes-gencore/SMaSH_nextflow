@@ -13,7 +13,7 @@ params {
     // emails = "mpfletc@emory.edu"
     
     // Resources (cpus = 32, maxForks = 25 works ok for sblab03)
-    cpus = 32
+    // cpus = 24
    
     // Number of reads per sample to use for SMaSH
     n_reads_smash = 5000000
@@ -35,22 +35,20 @@ params {
 }
 
 // Nextflow automatically mounts the task workdir, so it only causes problems if you try to do that here.
-docker {
-    enabled = true
-    // runOptions = "-v /yerkes-cifs/runs/tools/SMaSH-master:/yerkes-cifs/runs/tools/SMaSH-master \
-    //               -v $params.vcf_path:$params.vcf_path"
-    // runOptions = "-v /yerkes-cifs/runs/tools/SMaSH-master:/yerkes-cifs/runs/tools/SMaSH-master \
-    //               -v $PWD/subset_bams:$PWD/subset_bams/ \
-    //               -v $params.vcf_path:$params.vcf_path \
-    //               -w $PWD/subset_bams/"
-}
-
-// The samtools installation wasn't working on the new servers, so you can conda and the conda/samtools_env.yml recipe to create an environment with a working version of samtools v1.17.
-conda.enabled = true
-
-profiles { 
-    dryrun {
-
+process {
+    withLabel: samtools {
+        cpus = 24
+        maxForks = 3
+        container = "docker.io/micahpf/samtools:1.17"
+    }
+    withName: SMASH {
+        container = 'docker.io/micahpf/smash:v1'
+        runOptions = '-v $params.vcf_path:$params.vcf_path'
+    }
+    withName: PLOT_HEATMAP {
+        container = 'docker.io/rocker/tidyverse'
     }
 }
-
+podman {
+    enabled = true
+}
