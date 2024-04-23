@@ -3,17 +3,17 @@
 
 params {      
     // Where FASTQs are stored
-    bam_dir = '/yerkes-cifs/runs/Analysis/2023_Analyses/p23025_Prabhu/p23025_Prabhu_Processing/second_seq_alignments'
+    bam_dir = '/yerkes-cifs/runs/analyst/micah/automation/SMaSH_nextflow/test_data'
     
     // Where you want the results saved
-    outdir = '/yerkes-cifs/runs/analyst/micah/automation/SMaSH_nextflow'  //'s3://cellranger-nextflow/test' 
+    outdir = '/yerkes-cifs/runs/analyst/micah/automation/SMaSH_nextflow/test_out'  //'s3://cellranger-nextflow/test' 
 
     // Separate multiple email addresses by commas if desired
     emails = null
     // emails = "mpfletc@emory.edu"
     
     // Resources (cpus = 32, maxForks = 25 works ok for sblab03)
-    // cpus = 24
+    cpus = 24
    
     // Number of reads per sample to use for SMaSH
     n_reads_smash = 5000000
@@ -35,20 +35,41 @@ params {
 }
 
 // Nextflow automatically mounts the task workdir, so it only causes problems if you try to do that here.
-process {
-    withLabel: samtools {
-        cpus = 24
-        maxForks = 3
-        container = "docker.io/micahpf/samtools:1.17"
+profiles {
+  conda {
+    process {
+        withLabel: samtools {
+            conda = 'bioconda::samtools'
+        }
+        withName: SMASH {
+            conda = 'bioconda::pysam numpy scipy'
+        }
+        withName: PLOT_HEATMAP {
+            conda = 'r::r-tidyverse'
+        }
     }
-    withName: SMASH {
-        container = 'docker.io/micahpf/smash:v1'
-        runOptions = '-v $params.vcf_path:$params.vcf_path'
+
+    conda.enabled = true
+  }
+  
+  podman {
+    process {
+        withLabel: samtools {
+            // cpus = 24
+            // maxForks = 3
+            container = 'docker.io/micahpf/samtools:1.17'
+        }
+        withName: SMASH {
+            container = 'docker.io/micahpf/smash:v1'
+        }
+        withName: PLOT_HEATMAP {
+            container = 'docker.io/rocker/tidyverse'
+        }
     }
-    withName: PLOT_HEATMAP {
-        container = 'docker.io/rocker/tidyverse'
-    }
-}
-podman {
-    enabled = true
+
+    podman {
+        enabled = true
+        runOptions = '-u root'
+    }    
+  }
 }

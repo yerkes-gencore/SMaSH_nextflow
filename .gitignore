@@ -1,6 +1,7 @@
 nextflow
 .nextflow.log*
 .nextflow/
+smash_out/
 work/
 results
 workspace.code-workspace

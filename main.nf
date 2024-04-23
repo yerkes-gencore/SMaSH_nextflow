@@ -71,7 +71,7 @@ process SORT_BAM {
     
     script:
     """
-    samtools sort $subsampled_bam -@ $param.cpus -o ${sample_id}_smash.bam
+    samtools sort $subsampled_bam -@ $params.cpus -o ${sample_id}_smash.bam
     """
 }
 
@@ -87,7 +87,7 @@ process INDEX_BAM {
     
     script:
     """
-    /yerkes-cifs/runs/tools/samtools/samtools-1.17/samtools index ${sample_id}_smash.bam -@ $param.cpus -o ${sample_id}_smash.bai
+    samtools index ${sample_id}_smash.bam -@ $params.cpus
     """
 }
 
@@ -117,13 +117,12 @@ process PLOT_HEATMAP {
     path 'pval_out.txt'
 
     output: 
-    path 'pval_heatmap.png'
+    path 'SMaSH_pval_heatmap.png'
 
     script:
     """
     Rscript plot_SMaSH_heatmap.R ${params.heatmapWidth} ${params.heatmapTextSize}
     """
-
 }
 
 // ////////////////////////////////////////////////////
@@ -141,19 +140,22 @@ workflow {
         .set { input_bams_ch }
     
     // Prepare bams for SMaSH
-    subsampled_bam_ch = SUBSAMPLE_BAM(input_bams_ch)
+    SUBSAMPLE_BAM(input_bams_ch)
+        .set { subsampled_bam_ch }
     
-    sorted_bam_ch = SORT_BAM(subsampled_bam_ch) 
+    SORT_BAM(subsampled_bam_ch) 
+        .set { sorted_bam_ch }
     
-    processed_bams_ch = INDEX_BAM(sorted_bam_ch) // Publishes subsampled + sorted bams used in SMaSH
+    INDEX_BAM(sorted_bam_ch) // Publishes subsampled + sorted bams used in SMaSH
         .collect() // And passes bams and bais to SMaSH
+        .set { processed_bams_ch }
     
     // Instantiate vcf channel
     // Channel
     //     .fromPath("$params.vcf_path/$params.vcf_file")
     //     .set { vcf_ch }
 
-    // Run SMaSH (and send 'p_val_out.txt' to heatmap process)
+    // Run SMaSH (and send 'pval_out.txt' to heatmap process)
     SMASH(processed_bams_ch) //, vcf_ch) // Publishes SMaSH output
         .filter { it.name == 'pval_out.txt' } // And passes 'pval_out.txt' to the heatmap process
         .set { smash_p_val_ch }

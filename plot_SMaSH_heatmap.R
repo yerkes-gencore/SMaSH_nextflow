@@ -4,9 +4,9 @@
 
 ## Pass in args for plot size and text size
 args <- commandArgs(trailingOnly=TRUE)
-# test if there is at least one argument: if not, set default plot width (in cm)
+# test if there is at least one arguments: if not, set default plot width (in cm)
 if (length(args)==0) {
-  args <- 30
+  args[1] <- 30
 } else if (length(args)==1) {
   # default plot test size
   args[2] = 4
