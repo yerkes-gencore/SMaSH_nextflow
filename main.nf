@@ -161,11 +161,15 @@ workflow {
         .set { smash_p_val_ch }
 
     // Plot p-value heatmap
-    PLOT_HEATMAP(smash_p_val_ch) // Publishes a heatmap representation of SMaSH output
+    //PLOT_HEATMAP(smash_p_val_ch) // Publishes a heatmap representation of SMaSH output
 }
 
 workflow.onComplete {
     def msg = """\
+        Workflow complete! The key output is ${params.outdir}/smash_out/pval_out.txt
+
+        To visualize these data more easily, open this directory in RStudio Server and modify plot_SMaSH_heatmap.R to plot a heatmap using pval_out.txt given the sampling design for these data.
+
         Pipeline execution summary
         ---------------------------
         Completed at: ${workflow.complete}
