@@ -9,3 +9,5 @@ workspace.code-workspace
 test/
 *.bam
 *.bai
+
+snippet.nf

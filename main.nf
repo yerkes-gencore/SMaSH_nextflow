@@ -129,36 +129,83 @@ process PLOT_HEATMAP {
 // /* --              WORKFLOW                    -- */
 // ////////////////////////////////////////////////////
 
+// Three alternative workflows: (1) subsample_bams_wf, (2) sort_bams_wf, (3) smash_bams_wf
+
+workflow smash_bams_wf {
+    if ( !processed_bams_ch ) {
+        take: input_bams_ch
+
+        main:
+            SMASH(input_bams_ch)
+                .filter { it.name == 'pval_out.txt' }
+                .set { smash_p_val_ch }
+    } else {
+        take: processed_bams_ch
+
+        main:
+            SMASH(processed_bams_ch)
+                .filter { it.name == 'pval_out.txt' }
+                .set { smash_p_val_ch }
+    }
+}
+
+// workflow sort_bams {
+
+// }
+
+// workflow subsample_bams {
+
+// }
+
+// Three alternative workflows: (1) subsample_bams_wf, (2) sort_bams_wf, (3) smash_bams_wf
+
 workflow {
     println "Workflow start: $workflow.start"
-    
-    // Instantiate input bams channel
+
+   // Instantiate input bams channel
     Channel
         .fromPath("${params.bam_dir}/**.bam")
         .take ( params.dev ? params.dev_n_samples : -1 )
         .map { file -> [file.baseName, file] }
-        .set { input_bams_ch }
-    
-    // Prepare bams for SMaSH
-    SUBSAMPLE_BAM(input_bams_ch)
-        .set { subsampled_bam_ch }
-    
-    SORT_BAM(subsampled_bam_ch) 
-        .set { sorted_bam_ch }
-    
-    INDEX_BAM(sorted_bam_ch) // Publishes subsampled + sorted bams used in SMaSH
-        .collect() // And passes bams and bais to SMaSH
-        .set { processed_bams_ch }
-    
-    // Instantiate vcf channel
-    // Channel
-    //     .fromPath("$params.vcf_path/$params.vcf_file")
-    //     .set { vcf_ch }
+        .set { input_bams_ch } 
 
-    // Run SMaSH (and send 'pval_out.txt' to heatmap process)
-    SMASH(processed_bams_ch) //, vcf_ch) // Publishes SMaSH output
-        .filter { it.name == 'pval_out.txt' } // And passes 'pval_out.txt' to the heatmap process
-        .set { smash_p_val_ch }
+    // If start_by_smashing, create a bai channel, mix it with the bams and skip SUBSAMPLE_BAM, SORT_BAM, and INDEX_BAM
+    if ( params.start_by_smashing ) 
+        
+        Channel
+            .fromPath("${params.bam_dir}/**.bai")
+            .take ( params.dev ? params.dev_n_samples : -1 )
+            .map { file -> [file.simpleName, file] }
+            .set { input_bais_ch }
+
+        input_bams_ch
+            .mix(input_bais_ch)
+            .groupTuple()
+            .map { baseName, file -> file }
+            .collect()
+            .set { processed_bams_ch }
+
+        SMASH(processed_bams_ch)
+            .filter { it.name == 'pval_out.txt' } // And passes 'pval_out.txt' to the heatmap process
+            .set { smash_p_val_ch }
+    
+    
+
+    // // Prepare bams for SMaSH
+    // SUBSAMPLE_BAM(input_bams_ch)
+    //     .set { subsampled_bam_ch }
+    
+    // SORT_BAM(subsampled_bam_ch) 
+    //     .set { sorted_bam_ch }
+    
+    // INDEX_BAM(sorted_bam_ch) // Publishes subsampled + sorted bams used in SMaSH
+    //     .collect() // And passes bams and bais to SMaSH
+    //     .set { processed_bams_ch }
+
+    // // Run SMaSH (and send 'pval_out.txt' to heatmap process)
+    // SMASH(processed_bams_ch) //, vcf_ch) // Publishes SMaSH output
+    //     .filter { it.name == 'pval_out.txt' } // And passes 'pval_out.txt' to the heatmap process
+    //     .set { smash_p_val_ch }
 
     // Plot p-value heatmap
     //PLOT_HEATMAP(smash_p_val_ch) // Publishes a heatmap representation of SMaSH output
