@@ -133,14 +133,29 @@ process PLOT_HEATMAP {
 
 // Instantiate input bams channel
 Channel
-    .fromPath("${params.bam_dir}/**.bam")
+    .fromPath("${params.bam_dir}/**.bam", checkIfExists: true)
     .take ( params.dev ? params.dev_n_samples : -1 )
     .map { file -> [file.simpleName, file] }
     .set { input_bams_ch } 
 
-workflow START_BY_SMASHING {
+workflow SORTING {
+    SORT_BAM(subsampled_bam_ch) 
+        .set { sorted_bam_ch }
+
+    INDEX_BAM(sorted_bam_ch) // Publishes subsampled + sorted bams used in SMaSH
+        .collect() // And passes bams and bais to SMaSH
+        .set { processed_bams_ch }     
+}
+
+workflow SMASHING {
+    SMASH(processed_bams_ch)
+        .filter { it.name == 'pval_out.txt' } // And passes 'pval_out.txt' to the heatmap process
+        .set { smash_p_val_ch }
+}
+
+workflow PAIRING_BAM_BAI {
     Channel
-        .fromPath("${params.bam_dir}/**.bai")
+        .fromPath("${params.bam_dir}/**.bai", checkIfExists: true)
         .take ( params.dev ? params.dev_n_samples : -1 )
         .map { file -> [file.simpleName, file] }
         .set { input_bais_ch }
@@ -151,62 +166,29 @@ workflow START_BY_SMASHING {
         .map { baseName, file -> file }
         .collect()
         .set { processed_bams_ch }
-
-    SMASH(processed_bams_ch)
-        .filter { it.name == 'pval_out.txt' } // And passes 'pval_out.txt' to the heatmap process
-        .set { smash_p_val_ch }
-}
-
-workflow START_BY_SORTING {
-    input_bams_ch
-        .set { subsampled_bam_ch }
-
-    SORT_BAM(subsampled_bam_ch) 
-        .set { sorted_bam_ch }
-
-    INDEX_BAM(sorted_bam_ch) // Publishes subsampled + sorted bams used in SMaSH
-        .collect() // And passes bams and bais to SMaSH
-        .set { processed_bams_ch }
-
-    SMASH(processed_bams_ch)
-        .filter { it.name == 'pval_out.txt' } // And passes 'pval_out.txt' to the heatmap process
-        .set { smash_p_val_ch }          
-}
-
-workflow START_BY_SUBSAMPLING {
-    SUBSAMPLE_BAM(input_bams_ch)
-        .set { subsampled_bam_ch }
-
-    SORT_BAM(subsampled_bam_ch) 
-        .set { sorted_bam_ch }
-
-    INDEX_BAM(sorted_bam_ch) // Publishes subsampled + sorted bams used in SMaSH
-        .collect() // And passes bams and bais to SMaSH
-        .set { processed_bams_ch }
-
-    SMASH(processed_bams_ch)
-        .filter { it.name == 'pval_out.txt' } // And passes 'pval_out.txt' to the heatmap process
-        .set { smash_p_val_ch }          
 }
 
 workflow {
     println "Workflow start: $workflow.start"
 
-    // If start_by_smashing, create a bai channel, mix it with the bams and skip SUBSAMPLE_BAM, SORT_BAM, and INDEX_BAM
-    if ( params.start_by == "smashing" ) {
-        START_BY_SMASHING()
-    }
-    // If start-by-sorting, skip SORT_BAM, and INDEX_BAM
-    else if ( params.start_by == "sorting" ) {
-        START_BY_SORTING()
-    }
-    // If start-by-sorting, skip SORT_BAM, and INDEX_BAM
-    else if ( params.start_by == "subsampling" ) {
-        START_BY_SUBSAMPLING()
+    // Subsample bams only if params.subsample == true, otherwise pass input bams to next process
+    if ( params.subsample ) {
+        SUBSAMPLE_BAM(input_bams_ch)
+            .set { subsampled_bam_ch }
+    } 
+    else {
+        input_bams_ch
+            .set { subsampled_bam_ch }
     }
 
-    // Plot p-value heatmap
-    //PLOT_HEATMAP(smash_p_val_ch) // Publishes a heatmap representation of SMaSH output
+    // If starting with sorting, run SORTING workflow and feed into SMASHING workflows
+    if ( params.start_by == "sorting" ) {
+        subsampled_bam_ch | SORTING() | SMASHING()
+    }
+    // If starting with smashing, check if bais exist, if so, create bai channel and mix with bams as input to SMASHING
+    if ( params.start_by == "smashing" ) {
+        subsampled_bam_ch | PAIRING_BAM_BAI() | SMASHING()
+    }
 }
 
 workflow.onComplete {
