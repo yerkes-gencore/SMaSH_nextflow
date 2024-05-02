@@ -105,11 +105,44 @@ workflow.onComplete {
 
 def helpMessage() {
     log.info """
-    Usage:
-    The typical command for running the pipeline is as follows:
-    nextflow run SMaSH.nf -c nf_SMaSH.config
+    Execute a SMaSH pipeline project
+    
+    Typical Usage: nextflow run yerkes-gencore/SMaSH_nextflow <path to bam (and/or bai) files> [options] -profile conda
+    
+    Parameters:
+        --bam_dir Where FASTQs are stored
+        default: '/yerkes-cifs/runs/analyst/micah/automation/SMaSH_nextflow/test_data'
 
-    Edit the nextflow.config file to add run parameters
+        --outdir Where you want the results saved
+        default: '/yerkes-cifs/runs/analyst/micah/automation/SMaSH_nextflow/test_out'
+
+        --vcf_file Filename of vcf for smash
+        default: 'rhesus.indian.af.0.3-0.7.onTarget.noIntronStreamStop.synonymous.vcf'
+        nb: human reference is here: /yerkes-cifs/runs/tools/SMaSH-master/snps_GRCh38.vcf
+        
+        --vcf_path Path to vcf for smash
+        default: '/yerkes-cifs/runs/Genome_references/macaca_mulatta/mmul10/SNPs'
+
+        --subsample Whether to subsample reads for alignments. Mainly useful for minimizing disk usage.
+        default: true
+
+        --subsample_n_reads Number of reads to subsample.
+        default: 5000000
+
+        --input_bais_exist Whether input bams in bam_dir have already been indexed. If not, the pipeline will sort and index them.
+        default: false
+
+        --dev Run in development mode (run on small subset of samples)
+        default: false
+
+        --dev_n_samples Number of samples to include in dev mode
+        default: 4
+    
+    Profiles:
+        -profile conda: Run each process in its own conda environment
+        
+        -profile podman: (Experimental) Attempt to run each process in its own podman container
+    
     """.stripIndent()
 }
 
