@@ -11,3 +11,4 @@ test/
 *.bai
 
 snippet.nf
+.Rproj.user

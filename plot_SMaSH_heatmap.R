@@ -12,8 +12,10 @@ if (length(args)==0) {
   args[2] = 4
 }
 
-plotWidth <- args[1]
-plotTextSize <- args[2]
+# plotWidth <- args[1]
+# plotTextSize <- args[2]
+plotWidth <- 30
+plotTextSize <- 8
 
 ## Setup
 library(readr)
@@ -24,6 +26,7 @@ library(forcats)
 library(ggplot2)
 
 ## Read in data
+## I removed the file paths from the pval_out.txt file in "smash_out" and save it here.
 pval_out <- read_tsv("pval_out.txt", col_types = paste(rep("c",360), collapse=''))
 
 pval_out <- pval_out %>%
@@ -35,8 +38,10 @@ to_plot <- pval_out %>%
   pivot_longer(cols = ends_with(".bam"),
                names_to = "sample_B",
                values_to = "pval_neg_exp") %>%
-  mutate(sample_A = str_replace_all(sample_A, "-", "_"),
-         sample_B = str_replace_all(sample_B, "-", "_")) %>%
+  # mutate(sample_A = str_replace_all(sample_A, "-", "_"),
+  #        sample_B = str_replace_all(sample_B, "-", "_")) %>%
+  mutate(sample_A = str_replace(str_replace(sample_A, "-", "_"),"-","_"),
+         sample_B = str_replace(str_replace(sample_B, "-", "_"),"-","_")) %>%
   separate_wider_delim(cols = c("sample_A"),
                        delim = "_",
                        names = c("projID_A", "sampID_A", "indivID_A", "repID_A"),
@@ -58,7 +63,7 @@ p <- to_plot %>%
                      fill=pval_neg_exp)) +
   geom_raster() +
   scale_fill_viridis_c(option="magma") +
-  theme(axis.text = element_text(size=plotTextSize),
+  theme(axis.text = element_text(size=plotTextSize,face = "bold"),
         axis.text.x = element_text(angle=90, hjust = 1, vjust=0.5),
         aspect.ratio = 1) 
 
